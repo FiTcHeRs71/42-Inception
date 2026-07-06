@@ -3,11 +3,14 @@ services:
     build: ./requirements/mariadb
     container_name: mariadb
     env_file:
-    - .env
+      - .env
+    secrets:
+      - db_password
+      - db_root_password
     networks:
-    - inception
+      - inception
     volumes:
-    - db_data:/var/lib/mysql
+      - db_data:/var/lib/mysql
     restart: always
 
 networks:
@@ -15,3 +18,14 @@ networks:
 
 volumes:
   db_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/fducrot/data/mariadb
+
+secrets:
+  db_password:
+    file: ../secrets/db_password.txt
+  db_root_password: 
+    file: ../secrets/db_root_password.txt
