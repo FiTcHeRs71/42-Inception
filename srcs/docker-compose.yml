@@ -13,6 +13,23 @@ services:
       - db_data:/var/lib/mysql
     restart: always
 
+  wordpress:
+    build: ./requirements/wordpress
+    container_name: wordpress
+    env_file:
+      - .env
+    secrets:
+      - db_password
+      - credentials
+      - visitor
+    networks:
+      - inception
+    volumes:
+      - wp_data:/var/www/html
+    depends_on:
+      - mariadb
+    restart: always
+
 networks:
   inception:
 
@@ -23,9 +40,19 @@ volumes:
       type: none
       o: bind
       device: /home/fducrot/data/mariadb
+  wp_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/fducrot/data/wordpress
 
 secrets:
   db_password:
     file: ../secrets/db_password.txt
   db_root_password: 
     file: ../secrets/db_root_password.txt
+  credentials:
+    file: ../secrets/credentials.txt
+  visitor:
+    file: ../secrets/visitor.txt
