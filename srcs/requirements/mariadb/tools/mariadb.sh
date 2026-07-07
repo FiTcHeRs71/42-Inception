@@ -1,8 +1,11 @@
 #!/bin/bash
 
 mkdir -p /run/mysqld
+
+#Donne la propriete du dossier a mysqlafi qu'il ecrive dedans
 chown mysql:mysql /run/mysqld
 
+#Check si une DB existe deja ou non ?
 if [ ! -d "/var/lib/mysql/$MYSQL_DATABASE" ]; then
 
 	DB_PASSWORD=$(cat /run/secrets/db_password)
@@ -17,6 +20,7 @@ ALTER USER 'root'@'localhost' IDENTIFIED BY '$DB_ROOT_PASSWORD';
 FLUSH PRIVILEGES;
 EOF
 
+#Lance MariaDB en PID1, pas besoin d'option il est deja PID1 de base + lance linit sous cet utlisateur au lieu de root
 	exec mariadbd --init-file=/tmp/init.sql --user=mysql
 else
 	echo "Database already exists"

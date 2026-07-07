@@ -44,6 +44,8 @@ if [ ! -f "wp-config.php" ]; then
 
 fi
 
+#Configure le port d'ecoute de wordPress sur 9000
 sed -i 's|listen = /run/php/php8.2-fpm.sock|listen = 9000|' /etc/php/8.2/fpm/pool.d/www.conf
 
+#Lance WordPress + -F pour le forcer a etre au premeir plan (PID1)
 exec /usr/sbin/php-fpm8.2 -F
