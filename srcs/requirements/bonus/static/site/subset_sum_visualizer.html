@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subset Sum — Visualiseur</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181b24;
+    --border: #2a2e3a;
+    --text: #e2e4ea;
+    --muted: #6b7084;
+    --accent: #38bdf8;
+    --skip: #f472b6;
+    --success: #34d399;
+    --fail: #ef4444;
+    --panier: #1e2231;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    padding: 24px 20px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    background: linear-gradient(90deg, var(--accent), var(--skip));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  .subtitle .cyan { color: var(--accent); }
+  .subtitle .pink { color: var(--skip); }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+
+  .controls label {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .controls input {
+    display: block;
+    margin-top: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  #inputTarget { width: 64px; }
+  #inputNums   { width: 100%; min-width: 140px; }
+  .nums-label  { flex: 1; min-width: 140px; }
+
+  .btn {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    transition: background .15s;
+  }
+  .btn:hover { background: #22263a; }
+
+  .btn-accent {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 8px 16px;
+  }
+  .btn-accent:hover { background: #5ccefa; }
+
+  .btn-play {
+    font-weight: 700;
+    color: #000;
+    border: none;
+  }
+
+  .step-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .step-label {
+    color: var(--muted);
+    font-size: 12px;
+    margin-left: 8px;
+  }
+
+  .info-panel {
+    background: var(--panier);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  .info-panel .row {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    font-size: 13px;
+  }
+
+  .info-panel .muted { color: var(--muted); }
+  .info-panel .accent { color: var(--accent); font-weight: 600; }
+  .info-panel .found { color: var(--success); font-weight: 700; }
+  .info-panel .missed { color: var(--fail); font-weight: 600; }
+
+  .solutions {
+    background: #0f2a1f;
+    border: 1px solid rgba(52, 211, 153, 0.27);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: none;
+  }
+  .solutions .head { color: var(--success); font-weight: 700; }
+  .solutions .combo { margin-top: 4px; }
+
+  .tree-container {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 52vh;
+    margin-bottom: 20px;
+  }
+
+  .tree-container svg { display: block; margin: 0 auto; }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend .sq-cyan    { color: var(--accent); }
+  .legend .sq-pink    { color: var(--skip); }
+  .legend .sq-green   { color: var(--success); }
+  .legend .sq-red     { color: var(--fail); }
+</style>
+</head>
+<body>
+
+<h1>Subset Sum — Visualiseur</h1>
+<p class="subtitle">
+  Arbre de récursion &bull; Branche <span class="cyan">gauche = PRENDRE</span>
+  &bull; Branche <span class="pink">droite = NE PAS PRENDRE</span>
+</p>
+
+<div class="controls">
+  <label>
+    Cible (n)
+    <input id="inputTarget" value="6">
+  </label>
+  <label class="nums-label">
+    Nombres (espace séparé, max 8)
+    <input id="inputNums" value="1 3 5 2">
+  </label>
+  <button class="btn btn-accent" onclick="generate()">Générer</button>
+</div>
+
+<div class="step-controls" id="stepControls" style="display:none">
+  <button class="btn" onclick="goStart()">⏮ Début</button>
+  <button class="btn" onclick="goBack()">◀ Reculer</button>
+  <button class="btn btn-play" id="btnPlay" onclick="togglePlay()">▶ Lecture</button>
+  <button class="btn" onclick="goForward()">Avancer ▶</button>
+  <button class="btn" onclick="goEnd()">Fin ⏭</button>
+  <span class="step-label" id="stepLabel"></span>
+</div>
+
+<div class="info-panel" id="infoPanel">
+  <div class="row" id="infoRow"></div>
+</div>
+
+<div class="solutions" id="solutionsPanel"></div>
+
+<div class="tree-container" id="treeContainer"></div>
+
+<div class="legend">
+  <span><span class="sq-cyan">■</span> PRENDRE tab[i]</span>
+  <span><span class="sq-pink">■</span> NE PAS PRENDRE</span>
+  <span><span class="sq-green">■</span> sum == n (trouvé)</span>
+  <span><span class="sq-red">■</span> sum ≠ n (raté)</span>
+</div>
+
+<script>
+/* ── State ──────────────────────────────────────────────── */
+let tree = null, steps = [], solutions = [];
+let currentStep = -1, playing = false, playInterval = null;
+let target = 6;
+
+const NODE_W = 56, NODE_H = 38, GAP_X = 64, GAP_Y = 72;
+
+/* ── Build tree (mirrors the C code) ────────────────────── */
+function buildTree(tab, tgt, idx, sum, basket) {
+  if (idx === tab.length) {
+    return {
+      idx, sum, basket: [...basket],
+      found: sum === tgt, take: null, skip: null,
+      label: sum === tgt ? "✓ Trouvé !" : "✗ Raté"
+    };
+  }
+  const val = tab[idx];
+  const takeNode = buildTree(tab, tgt, idx + 1, sum + val, [...basket, val]);
+  const skipNode = buildTree(tab, tgt, idx + 1, sum, [...basket]);
+  return {
+    idx, sum, basket: [...basket], val,
+    found: false, take: takeNode, skip: skipNode,
+    label: "tab[" + idx + "] = " + val
+  };
+}
+
+/* ── DFS order ──────────────────────────────────────────── */
+function dfsOrder(node) {
+  if (!node) return [];
+  const list = [node];
+  if (node.take) list.push(...dfsOrder(node.take));
+  if (node.skip) list.push(...dfsOrder(node.skip));
+  return list;
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+let gX = 0;
+function layoutTree(node, depth) {
+  if (!node) return;
+  if (!node.take && !node.skip) {
+    node.x = gX++; node.y = depth; return;
+  }
+  layoutTree(node.take, depth + 1);
+  layoutTree(node.skip, depth + 1);
+  const lx = node.take ? node.take.x : node.skip.x;
+  const rx = node.skip ? node.skip.x : node.take.x;
+  node.x = (lx + rx) / 2; node.y = depth;
+}
+
+function allNodes(node) {
+  if (!node) return [];
+  return [node, ...allNodes(node.take), ...allNodes(node.skip)];
+}
+
+/* ── Generate ───────────────────────────────────────────── */
+function generate() {
+  const nums = document.getElementById("inputNums").value.trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
+  target = parseInt(document.getElementById("inputTarget").value, 10) || 0;
+  if (nums.length === 0 || nums.length > 8) return;
+
+  tree = buildTree(nums, target, 0, 0, []);
+  gX = 0;
+  layoutTree(tree, 0);
+
+  const ordered = dfsOrder(tree);
+  ordered.forEach((n, i) => n._id = i);
+  steps = ordered;
+  solutions = ordered.filter(n => n.found);
+  currentStep = -1;
+  stopPlay();
+  document.getElementById("stepControls").style.display = "flex";
+  render();
+}
+
+/* ── Step controls ──────────────────────────────────────── */
+function goStart()   { stopPlay(); currentStep = -1; render(); }
+function goBack()    { stopPlay(); currentStep = Math.max(-1, currentStep - 1); render(); }
+function goForward() { stopPlay(); currentStep = Math.min(steps.length - 1, currentStep + 1); render(); }
+function goEnd()     { stopPlay(); currentStep = steps.length - 1; render(); }
+
+function togglePlay() {
+  if (playing) { stopPlay(); return; }
+  if (currentStep >= steps.length - 1) currentStep = -1;
+  playing = true;
+  updatePlayBtn();
+  playInterval = setInterval(() => {
+    if (currentStep >= steps.length - 1) { stopPlay(); return; }
+    currentStep++;
+    render();
+  }, 420);
+}
+
+function stopPlay() {
+  playing = false;
+  if (playInterval) { clearInterval(playInterval); playInterval = null; }
+  updatePlayBtn();
+}
+
+function updatePlayBtn() {
+  const btn = document.getElementById("btnPlay");
+  btn.textContent = playing ? "⏸ Pause" : "▶ Lecture";
+  btn.style.background = playing ? "#f472b6" : "#38bdf8";
+}
+
+/* ── SVG helpers ────────────────────────────────────────── */
+function px(n) { return n.x * GAP_X + NODE_W / 2; }
+function py(n) { return n.y * GAP_Y + NODE_H / 2 + 10; }
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+
+/* ── Render ─────────────────────────────────────────────── */
+function render() {
+  if (!tree) return;
+
+  const visible = new Set(steps.slice(0, currentStep + 1).map(n => n._id));
+  const curId = currentStep >= 0 && currentStep < steps.length ? steps[currentStep]._id : -1;
+  const curNode = currentStep >= 0 ? steps[currentStep] : null;
+
+  /* step label */
+  document.getElementById("stepLabel").textContent =
+    "Étape " + (currentStep + 1) + " / " + steps.length;
+
+  /* info panel */
+  const panel = document.getElementById("infoPanel");
+  const row = document.getElementById("infoRow");
+  if (curNode) {
+    panel.style.display = "block";
+    let html = '<span><span class="muted">Nœud :</span> <span class="accent">' + curNode.label + '</span></span>';
+    html += '<span><span class="muted">sum =</span> <b>' + curNode.sum + '</b></span>';
+    const basketStr = curNode.basket.length > 0 ? curNode.basket.join(", ") : "vide";
+    html += '<span><span class="muted">Panier :</span> <b>[ ' + basketStr + ' ]</b></span>';
+    if (curNode.found) html += '<span class="found">✓ Somme == ' + target + ' !</span>';
+    else if (!curNode.take && !curNode.skip) html += '<span class="missed">✗ sum = ' + curNode.sum + ' ≠ ' + target + '</span>';
+    row.innerHTML = html;
+  } else {
+    panel.style.display = "none";
+  }
+
+  /* solutions */
+  const solPanel = document.getElementById("solutionsPanel");
+  if (currentStep === steps.length - 1 && solutions.length > 0) {
+    solPanel.style.display = "block";
+    let sh = '<span class="head">' + solutions.length + ' combinaison' + (solutions.length > 1 ? 's' : '') + ' trouvée' + (solutions.length > 1 ? 's' : '') + ' :</span>';
+    solutions.forEach(s => {
+      sh += '<div class="combo">→ ' + s.basket.join(" + ") + " = " + s.basket.reduce((a, b) => a + b, 0) + '</div>';
+    });
+    solPanel.innerHTML = sh;
+  } else {
+    solPanel.style.display = "none";
+  }
+
+  /* SVG tree */
+  const flat = allNodes(tree);
+  const maxX = flat.reduce((m, n) => Math.max(m, n.x), 0);
+  const maxY = flat.reduce((m, n) => Math.max(m, n.y), 0);
+  const svgW = (maxX + 1) * GAP_X + NODE_W;
+  const svgH = (maxY + 1) * GAP_Y + NODE_H + 20;
+
+  const svg = svgEl("svg", { width: svgW, height: svgH, viewBox: "0 0 " + svgW + " " + svgH });
+
+  /* edges */
+  const edges = [];
+  function collectEdges(n) {
+    if (!n) return;
+    if (n.take) { edges.push({ from: n, to: n.take, isTake: true }); collectEdges(n.take); }
+    if (n.skip) { edges.push({ from: n, to: n.skip, isTake: false }); collectEdges(n.skip); }
+  }
+  collectEdges(tree);
+
+  edges.forEach(e => {
+    if (!visible.has(e.from._id) || !visible.has(e.to._id)) return;
+    const col = e.isTake ? "#38bdf8" : "#f472b6";
+    svg.appendChild(svgEl("line", {
+      x1: px(e.from), y1: py(e.from) + NODE_H / 2 - 4,
+      x2: px(e.to),   y2: py(e.to) - NODE_H / 2 + 4,
+      stroke: col, "stroke-width": 2, "stroke-opacity": 0.7
+    }));
+    /* edge label */
+    const mx = (px(e.from) + px(e.to)) / 2 + (e.isTake ? -14 : 14);
+    const my = (py(e.from) + py(e.to)) / 2 - 4;
+    const lbl = svgEl("text", {
+      x: mx, y: my, "text-anchor": "middle", "font-size": 9,
+      fill: col, "font-family": "'JetBrains Mono', monospace", opacity: 0.85
+    });
+    lbl.textContent = e.isTake ? "prend" : "skip";
+    svg.appendChild(lbl);
+  });
+
+  /* nodes */
+  flat.forEach(n => {
+    const isLeaf = !n.take && !n.skip;
+    const vis = visible.has(n._id);
+
+    let fill = "transparent", stroke = "transparent", sw = 1.5;
+    if (vis) {
+      fill = "#181b24"; stroke = "#2a2e3a";
+      if (n._id === curId)  { fill = "#2a3048"; stroke = "#38bdf8"; sw = 2.5; }
+      else if (n.found)     { fill = "#132e24"; stroke = "#34d399"; }
+      else if (isLeaf)      { fill = "#2a1520"; stroke = "#ef4444"; }
+    }
+
+    svg.appendChild(svgEl("rect", {
+      x: px(n) - NODE_W / 2, y: py(n) - NODE_H / 2,
+      width: NODE_W, height: NODE_H, rx: 7,
+      fill, stroke, "stroke-width": sw
+    }));
+
+    if (!vis) return;
+
+    const mainText = svgEl("text", {
+      x: px(n), y: py(n) - 2, "text-anchor": "middle",
+      "font-size": 10, fill: "#e2e4ea",
+      "font-family": "'JetBrains Mono', monospace",
+      "font-weight": n._id === curId ? 700 : 400
+    });
+    mainText.textContent = isLeaf ? (n.found ? "✓" : "✗") : n.val;
+    svg.appendChild(mainText);
+
+    const sumText = svgEl("text", {
+      x: px(n), y: py(n) + 12, "text-anchor": "middle",
+      "font-size": 8, fill: "#6b7084",
+      "font-family": "'JetBrains Mono', monospace"
+    });
+    sumText.textContent = "Σ" + n.sum;
+    svg.appendChild(sumText);
+  });
+
+  const container = document.getElementById("treeContainer");
+  container.innerHTML = "";
+  container.appendChild(svg);
+}
+
+/* ── Init ───────────────────────────────────────────────── */
+generate();
+</script>
+</body>
+</html>
