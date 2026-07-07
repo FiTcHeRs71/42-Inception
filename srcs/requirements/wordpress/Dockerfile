@@ -3,6 +3,7 @@ FROM debian:bookworm
 RUN apt update && apt install -y \
 	php8.2-fpm \
 	php8.2-mysql \
+	php8.2-redis \
 	curl \
 	mariadb-client \
 	&& apt clean

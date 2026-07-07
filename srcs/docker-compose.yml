@@ -45,6 +45,30 @@ services:
       - wordpress
     restart: always
 
+  adminer:
+    build: ./requirements/bonus/adminer
+    container_name: adminer
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    networks:
+      - inception
+    depends_on:
+      - mariadb
+    restart: always
+
+  redis:
+    build: ./requirements/bonus/redis
+    container_name: redis
+    env_file:
+      - .env
+    networks:
+      - inception
+    depends_on:
+      - wordpress
+    restart: always
+
 networks:
   inception:
 
