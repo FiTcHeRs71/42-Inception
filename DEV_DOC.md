@@ -1,7 +1,7 @@
 # Developer documentation
 
-This document describes how to set up, build and manage the Inception project
-as a developer.
+This document describes how to set up, build and manage the Inception project as
+a developer.
 
 ## Setting up the environment from scratch
 
@@ -15,10 +15,7 @@ as a developer.
   127.0.0.1    fducrot.42.fr
   ```
 
-### Configuration files
-
-The following files are required but **not** tracked by git, so they must be
-created before the first build.
+### Configuration files (not tracked by git)
 
 - `srcs/.env` — non-sensitive environment variables:
 
@@ -34,30 +31,33 @@ created before the first build.
   WP_ADMIN_EMAIL=fducrot@student.42lausanne.ch
   WP_USER=visitor
   WP_USER_EMAIL=visitor@student.42.fr
+
+  # FTP
+  FTP_USER=fducrot
   ```
 
-- The `secrets/` folder, with one password per file (no trailing newline —
-  create them with `echo -n`):
+- The `secrets/` folder, one password per file (no trailing newline — use
+  `echo -n`):
 
   ```bash
-  echo -n 'your_db_user_password'   > secrets/db_password.txt
-  echo -n 'your_db_root_password'   > secrets/db_root_password.txt
-  echo -n 'your_wp_admin_password'  > secrets/credentials.txt
-  echo -n 'your_wp_user_password'   > secrets/visitor.txt
+  echo -n 'db_user_password'   > secrets/db_password.txt
+  echo -n 'db_root_password'   > secrets/db_root_password.txt
+  echo -n 'wp_admin_password'  > secrets/credentials.txt
+  echo -n 'wp_user_password'   > secrets/visitor.txt
+  echo -n 'ftp_password'       > secrets/ftp_password.txt
   ```
 
-  These files, and `srcs/.env`, are listed in `.gitignore` and must never be
-  committed.
+  These files and `srcs/.env` are in `.gitignore` and must never be committed.
 
 ## Building and launching the project
 
-The `Makefile` at the root drives Docker Compose. From the repository root:
+The `Makefile` at the root drives Docker Compose:
 
 ```bash
-make          # create the data directories, build the images and start the stack
+make          # create data directories, build images and start the stack
 make down     # stop the containers
 make clean    # stop the containers and remove the Docker volumes
-make fclean   # clean + remove the persistent data on the host
+make fclean   # clean + remove persistent data on the host
 make re       # full rebuild from a clean state
 ```
 
@@ -72,6 +72,7 @@ docker compose -f srcs/docker-compose.yml up --build -d
 ```
 inception/
 ├── Makefile
+├── README.md, USER_DOC.md, DEV_DOC.md
 ├── secrets/                 (ignored by git)
 └── srcs/
     ├── .env                 (ignored by git)
@@ -79,16 +80,33 @@ inception/
     └── requirements/
         ├── mariadb/    (Dockerfile, conf/, tools/)
         ├── nginx/      (Dockerfile, conf/, tools/)
-        └── wordpress/  (Dockerfile, conf/, tools/)
+        ├── wordpress/  (Dockerfile, conf/, tools/)
+        └── bonus/
+            ├── adminer/
+            ├── redis/
+            ├── static/
+            ├── ftp/
+            └── glances/
 ```
 
-Each service is built from `debian:bookworm`. The entrypoint script of each
-service performs its first-time initialisation if needed, then launches the
-daemon as PID 1 with `exec`.
+Each service is built from `debian:bookworm`. The entrypoint of each service
+performs first-time initialisation if needed, then launches its daemon as PID 1
+with `exec`.
+
+## Services and ports
+
+| Service     | Internal port | Published to host | Role                          |
+|-------------|---------------|-------------------|-------------------------------|
+| MariaDB     | 3306          | No                | Database                      |
+| WordPress   | 9000          | No                | php-fpm (FastCGI)             |
+| NGINX       | 443           | 443               | HTTPS entry point             |
+| Redis       | 6379          | No                | WordPress object cache        |
+| Adminer     | 8080          | 8080              | DB admin web UI               |
+| Static site | 8081          | 8081              | Static website                |
+| FTP         | 21 / 21000-21010 | same           | File access to WordPress vol. |
+| Glances     | 61208         | 61208             | Monitoring dashboard          |
 
 ## Managing containers and volumes
-
-Useful commands (run from the repository root):
 
 ```bash
 # List running containers
@@ -104,30 +122,26 @@ docker exec -it wordpress bash
 docker volume ls
 docker network ls
 
-# Inspect a container (config, mounts, network)
+# Inspect a container
 docker inspect nginx
-```
 
-To rebuild a single service after a change:
-
-```bash
+# Rebuild a single service
 docker compose -f srcs/docker-compose.yml up --build -d mariadb
 ```
 
 ## Where the data is stored and how it persists
 
-The two persistent stores are **named volumes** whose data is bound to a fixed
-location on the host, as required by the subject:
+The two persistent stores are named volumes bound to a fixed location on the
+host:
 
-- `db_data`  → `/home/fducrot/data/mariadb`  (MariaDB database files)
-- `wp_data`  → `/home/fducrot/data/wordpress` (WordPress website files)
+- `db_data`  -> `/home/fducrot/data/mariadb`  (MariaDB database files)
+- `wp_data`  -> `/home/fducrot/data/wordpress` (WordPress files; also mounted by
+  NGINX and the FTP service so they share the same files)
 
-Because the data lives on the host under `/home/fducrot/data`, it survives
-`make down` and `make clean` (which only remove containers and Docker-managed
-volume metadata). It is removed only by `make fclean`, which explicitly deletes
-the contents of those directories.
+Because the data lives under `/home/fducrot/data`, it survives `make down` and
+`make clean`, and is removed only by `make fclean`.
 
 Communication between services goes through the `inception` Docker network,
-where each service is reachable by its name (`mariadb`, `wordpress`, `nginx`).
-Only NGINX publishes a port to the host (`443:443`); MariaDB and WordPress are
-reachable only from inside the network.
+where each service is reachable by its name. Only the services that need a
+browser or client (NGINX, Adminer, static site, FTP, Glances) publish a port to
+the host; MariaDB, WordPress and Redis stay internal.

@@ -108,6 +108,11 @@ services:
       - "61208:61208"
     networks:
       - inception
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    pid: "host"
     restart: always
 
 networks:
