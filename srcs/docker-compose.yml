@@ -99,6 +99,17 @@ services:
       - wp_data:/var/www/html
     restart: always
 
+  glances:
+    build: ./requirements/bonus/glances
+    container_name: glances
+    env_file:
+      - .env
+    ports:
+      - "61208:61208"
+    networks:
+      - inception
+    restart: always
+
 networks:
   inception:
 
