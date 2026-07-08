@@ -69,6 +69,17 @@ services:
       - wordpress
     restart: always
 
+  static:
+    build: ./requirements/bonus/static
+    container_name: static
+    env_file:
+      - .env
+    networks:
+      - inception
+    ports:
+      - "8081:8081"
+    restart: always
+
 networks:
   inception:
 
